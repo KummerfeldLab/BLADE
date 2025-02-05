@@ -1,7 +1,8 @@
 
 
 
-## **BLADE** a python package for the purpose of tissue artifacts detection (Edge, Border, abnormal spots).
+## **BLADE**: a package for the purpose of tissue artifacts detection (Edge, Border, abnormal spots). 
+It has both Python and R implementations. For detailed usage tutorial refer to usage tutorial section. 
 
 ### Main use:  Detecting edge artifacts, border artifacts, and location malfunction artifacts
 
