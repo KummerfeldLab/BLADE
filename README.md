@@ -3,8 +3,37 @@
 
 ## This is a python package for the purpose of tissue artifacts detection (Edge, Border, abnormal spots).
 
+### Main use:  Detecting edge artifacts, border artifacts, and location malfunction artifacts
+
+### Context of use: Spatial transcriptomics data, especially Visium data
+
+### Pitfalls: 
+- Use of this method does not guarantee that there are no other types of artifacts.
+
+- For different technologies or tissue samples, some parameters may need to be changed by hand to ensure optimal performance.
+
+- Artifacts may not be detected if they: (1) occur only as gradual changes over larger pieces of tissue, (2) are low in strength, (3) occur in only small portions of the border or tissue edge.
+
+- BLADE has not been thoroughly evaluated for data from technologies other than Visium.
+
+### Principle of operation 
+
+- Edge artifacts and border artifacts are detected by first identifying edge spots and border spots based on the image, and then t-tests are used to compare those spots to interior spots.
+
+- Location malfunctions are identified at the batch level by identifying outlier spots in each image in the batch, identifying spot locations that are outliers in most or all of the images in the batch, and then testing whether there is a connected group of locations that is larger than should occur by chance.
 
 
+### Theoretical properties and empirical evidence
+- Edge and border artifacts detection inherits the theoretical properties from the t-test used.
+
+- Location artifact detection inherits the theoretical properties of the outlier spot detection method. The test for detecting if the largest outlier cluster is implausibly large relies on simulating random spatial distributions tailored to the shape of the tissue samples in the images, and is asymptotically correct as the number of simulated tissue samples increases.
+
+### Best practices
+
+- Images tested with BLADE should be investigated in other ways (e.g. heatmaps, plotting sequencing depth by edge distance, etc.) to assess if any of the pitfall conditions might apply.
+
+- BLADE should be used on Visium and other spatial transcriptomics data prior to other forms of analysis, to prevent bias
+----------------------
 
 ## Current version 
 
