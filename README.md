@@ -62,15 +62,18 @@ py_install("git+https://github.com/KummerfeldLab/artifactRemoval")
 Here is an example of we read in a tissue sample and produce a cleaned up "tissue_position.csv" file. 
 
 #### Explanation to major functions 
-remove_border(): This function automatically remove any border spots. Return a message about how many border spots are removed.
-remove_edge(distance = 3): This function automatically remove any edge spots. It takes one parameter "distance" indicates the deepth of edge we are going to remove. Return a message about how many edge spots are removed.
-malfunction(): This function automatically remove all malfunction spots. Return a message about how many malfunction spots are removed. 
+*remove_border()*: This function automatically remove any border spots. Return a message about how many border spots are removed.
+
+*remove_edge(distance = 3)*: This function automatically remove any edge spots. It takes one parameter "distance" indicates the deepth of edge we are going to remove. Return a message about how many edge spots are removed.
+
+*malfunction()*: This function automatically remove all malfunction spots. Return a message about how many malfunction spots are removed. 
 
 NOTE: There might be overlap across the class of edge, border and malfunction spots. The final number of "in_tissue" spot returned might not necessarily equal to the sum of spots removal in three above functions. 
  
 
-review_removing(): This function print the procedure of artifacts removal in the order of user run the removal functions. 
-simple_cleanser(): This function restart the whole removal procedure. 
+*review_removing()*: This function print the procedure of artifacts removal in the order of user run the removal functions. 
+
+*simple_cleanser()*: This function restart the whole removal procedure. 
 
 save(dir): This function specify a "tissue_position.csv" file in the dir specified by user.
 WARNNING: for save function, user need to specify a "dir" that is different from the current location of "tissue_position.csv" file, since the save function might overwrite the "tissue_position.csv" file if one use the same address.  
