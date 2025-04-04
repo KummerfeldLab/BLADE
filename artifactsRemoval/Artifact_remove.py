@@ -526,7 +526,7 @@ class Artifact_remove(Artifact_detect):
         self.remove_procedure.append("border")
         df_border_spot = self.get_border()
         for barcode in df_border_spot.barcode:
-            self.spot_inclusion_condition.loc[ self.spot_inclusion_condition.barcode == barcode, 'in_tisse'] = 0
+            self.spot_inclusion_condition.loc[ self.spot_inclusion_condition.barcode == barcode, 'in_tissue'] = 0
         print(f"We removed {len(df_border_spot.barcode)} border spots")
         return
 
@@ -535,7 +535,7 @@ class Artifact_remove(Artifact_detect):
         self.remove_procedure.append("malfunction")
         df_outlier_spot = Artifact_detect.outlier(self.get_sum())
         for barcode in df_outlier_spot.barcode:
-            self.spot_inclusion_condition.loc[ self.spot_inclusion_condition.barcode == barcode, 'in_tisse'] = 0
+            self.spot_inclusion_condition.loc[ self.spot_inclusion_condition.barcode == barcode, 'in_tissue'] = 0
         n_outlier = len(df_outlier_spot.barcode)
         print(f"We removed {n_outlier} outlier spots")
         return
