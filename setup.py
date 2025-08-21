@@ -12,6 +12,8 @@ setup(
     packages=find_packages(),  # Finds all python modules in the directory automatically
     install_requires=['numpy', 
                       'pandas',
+                      'scipy',
+                      'matplotlib',
                       ],
     keywords='artifacts removal',  # Keywords for your project
     python_requires='>=3.6'  # Minimum version requirement of the Python runtime

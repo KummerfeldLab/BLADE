@@ -13,25 +13,29 @@ import copy
 import pickle
 import sys
 
-from artifactsRemoval import Artifact_remove
-#import artifactsRemoval.Artifact_remove
-from artifactsRemoval import Tissue_obj
-from artifactsRemoval import Artifact_remove
-dir = "/Users/wan00232/Documents/UMNTMC-spatial/packages/detect_pkg"
-test = Artifact_remove(dir = dir)
+if not sys.argv: 
+    print("need to pass the directory")
 
-with open('data/sample.pkl', 'wb') as file:
-    pickle.dump(test, file)
-
+else: 
+    dir = sys.argv[1]
+type(dir)
+test = Artifact_remove(dir) 
 
 test.remove_border()
 test.remove_edge(distance=3)
 test.remove_malfunction()
-test.remove_edge(distance=6)
-
+#test.remove_edge(distance=6)
 
 test.review_removing()
 test.simple_cleanser()
+
+#test.remove_border()
+#test.remove_edge(distance=3)
+#test.remove_malfunction()
+#test.remove_edge(distance=6)
+test.save(test.dir)
+
+
 
 test.remove_border()
 test.remove_edge(distance=3)

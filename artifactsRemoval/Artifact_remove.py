@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 import scipy 
+import scipy.io
+import scipy.stats
 import copy
 
 
@@ -563,6 +565,8 @@ class Artifact_remove(Artifact_detect):
         df = copy.deepcopy(self.tissue_position)
 
         df.in_tissue = self.spot_inclusion_condition.in_tissue
-        df.to_csv(dir + '/tissue_position.csv', index = False)
+        df.to_csv(dir + '/tissue_positions.csv', index = False)
 
-        return
+        print(f"Saved the tissue position file to {dir}/tissue_positions.csv")
+
+        return df
