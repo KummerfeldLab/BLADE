@@ -111,12 +111,12 @@ class Artifact_detect(Tissue_obj):
         barcode =[]
         for index, row in self.tissue_position.iterrows():
  
-            bar = self.dict_coor_to_barcode.get(str(row[2]) + ' ' + str(row[3]) + ' ')
+            bar = self.dict_coor_to_barcode.get(str(row.iloc[2]) + ' ' + str(row.iloc[3]) + ' ')
             i = self.dict_barcode_to_column.get(bar)
             if i == None:
                 continue
-            x_mtx.append(row[2])
-            y_mtx.append(row[3])
+            x_mtx.append(row.iloc[2])
+            y_mtx.append(row.iloc[3])
             barcode.append(bar)
             gene_count.append(self.tissue_matrix[:,i].sum())
         d = {"barcode":barcode,
