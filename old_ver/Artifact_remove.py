@@ -5,14 +5,12 @@ import scipy.io
 import scipy.stats
 import copy
 
-import h5py
-from scipy.sparse import csc_matrix
+
 
 
 
 
 class Tissue_obj:
-
     def __init__(self, dir):
         self.dir = dir
         self.tissue_matrix = self.read_matrix()
@@ -445,7 +443,6 @@ class Artifact_detect(Tissue_obj):
 ########
 
 class Artifact_remove(Artifact_detect):
-
     def __init__(self, dir):
         super().__init__(dir)
         self.spot_inclusion_condition = self.fn_spot_inclusion_condition()
@@ -573,45 +570,3 @@ class Artifact_remove(Artifact_detect):
         print(f"Saved the tissue position file to {dir}/tissue_positions.csv")
 
         return df
-
-    def save_hdf5(self, out_path):
-        """
-        Save the filtered matrix, barcodes, and features in Visium HDF5 format.
-        out_path: path to the output .h5 file
-        """
-
-        # Ensure matrix is in CSC format for Visium compatibility
-        matrix = self.tissue_matrix
-        if not hasattr(matrix, 'tocsc'):
-            raise ValueError("tissue_matrix must be a scipy sparse matrix")
-        matrix = matrix.tocsc()
-
-        # Prepare barcodes and features
-        barcodes = self.barcode_list.iloc[:,0].values.astype('S')
-        features = self.feature_list
-
-        # Prepare features subfields
-        feature_id = features.iloc[:,0].values.astype('S')
-        feature_name = features.iloc[:,1].values.astype('S')
-        feature_type = features.iloc[:,2].values.astype('S') if features.shape[1] > 2 else np.array([b'Gene Expression']*len(features))
-        genome = np.array([b'GRCh38']*len(features))  # or set appropriately
-        all_tag_keys = np.array([b'feature_type'])
-
-        with h5py.File(out_path, 'w') as f:
-            grp = f.create_group('matrix')
-            # Main matrix datasets
-            grp.create_dataset('barcodes', data=barcodes)
-            grp.create_dataset('data', data=matrix.data)
-            grp.create_dataset('indices', data=matrix.indices)
-            grp.create_dataset('indptr', data=matrix.indptr)
-            grp.create_dataset('shape', data=np.array(matrix.shape, dtype=np.int32))
-
-            # Features group
-            feat_grp = grp.create_group('features')
-            feat_grp.create_dataset('id', data=feature_id)
-            feat_grp.create_dataset('name', data=feature_name)
-            feat_grp.create_dataset('feature_type', data=feature_type)
-            feat_grp.create_dataset('genome', data=genome)
-            feat_grp.create_dataset('_all_tag_keys', data=all_tag_keys)
-
-        print(f"Saved filtered matrix in Visium HDF5 format to {out_path}")

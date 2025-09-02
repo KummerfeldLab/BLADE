@@ -1,0 +1,12 @@
+Group: matrix
+Dataset: matrix/barcodes, shape: (3471,), dtype: |S18
+Dataset: matrix/data, shape: (1233650,), dtype: int32
+Group: matrix/features
+Dataset: matrix/features/_all_tag_keys, shape: (1,), dtype: |S6
+Dataset: matrix/features/feature_type, shape: (36601,), dtype: |S15
+Dataset: matrix/features/genome, shape: (36601,), dtype: |S6
+Dataset: matrix/features/id, shape: (36601,), dtype: |S15
+Dataset: matrix/features/name, shape: (36601,), dtype: |S17
+Dataset: matrix/indices, shape: (1233650,), dtype: int64
+Dataset: matrix/indptr, shape: (3472,), dtype: int64
+Dataset: matrix/shape, shape: (2,), dtype: int32
