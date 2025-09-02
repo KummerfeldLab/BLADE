@@ -31,3 +31,7 @@ def copy_hdf5_file(src_path, dst_path):
 # Example usage:
 print_hdf5_details(hdf5_path)
 # copy_hdf5_file("/path/to/source.h5", "/path/to/destination.h5")
+
+
+
+test_matrix = f["matrix/data"].tocsr()

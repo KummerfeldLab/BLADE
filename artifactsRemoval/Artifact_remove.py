@@ -1,12 +1,15 @@
+
 import pandas as pd
 import numpy as np
-import scipy 
+import scipy
 import scipy.io
 import scipy.stats
 import copy
-
 import h5py
 from scipy.sparse import csc_matrix
+
+# Import the efficient edge detection function
+from utils.spatial_utils import find_edge_spots
 
 
 
@@ -51,207 +54,48 @@ class Tissue_obj:
         #tissue_position = self.tissue_position.loc[self.tissue_position['barcode'].isin(self.barcode_list)]
         return tissue_position
 
+
     def fn_barcode_to_coor(self):
         dict = {}
-        #need to read from the tissue position file
         for index, row in self.tissue_position.iterrows():
             dict[row['barcode']] = [row['x_mtx'], row['y_mtx']]
-        
         return dict
-            
-
-    def fn_coor_to_barcode(self):
-        #need to read from the tissue position file
-        dict = {}
-        for index, row in self.tissue_position.iterrows():
-            temp_coor = [row['x_mtx'], row['y_mtx']]
-            dict[''.join(str(x) + ' ' for x in temp_coor)] = row['barcode']
-
-        return dict
-    
-
-    def fn_barcode_to_column(self):
-        dict = {}
-        for index, row in self.barcode_list.iterrows():
-            dict[row[0]] = index
-
-        return dict
-    
-    def fn_feature_to_row(self):
-        dict = {}
-        for index, row in self.feature_list.iterrows():
-            dict[row[1]] = index
-        return dict
-    
 
 
-
-
-
-
-
-
-#########################################################################
-
-
-
-
-
+# Move Artifact_detect to module level
 class Artifact_detect(Tissue_obj):
     def __init__(self, dir):
         super().__init__(dir)
+        # Prepare coordinates and tissue mask for spatial edge detection
+        self.coords_xy = self.tissue_position[['x_mtx', 'y_mtx']].values.astype(float)
+        self.in_tissue = self.tissue_position['in_tissue'].astype(bool).values
 
-
-
-    
-#############################
-    def get_sum(self): 
-        # we now change border test to level 2
-        gene_count = []
-        x_mtx =[]
-        y_mtx = []
-        barcode =[]
-        for index, row in self.tissue_position.iterrows():
- 
-            bar = self.dict_coor_to_barcode.get(str(row.iloc[2]) + ' ' + str(row.iloc[3]) + ' ')
-            i = self.dict_barcode_to_column.get(bar)
-            if i == None:
-                continue
-            x_mtx.append(row.iloc[2])
-            y_mtx.append(row.iloc[3])
-            barcode.append(bar)
-            gene_count.append(self.tissue_matrix[:,i].sum())
-        d = {"barcode":barcode,
-            "x_mtx":x_mtx,
-                          "y_mtx": y_mtx,
-                          "gene_count": gene_count
-        }
-        df = pd.DataFrame(d)
+    def get_sum(self):
+        # Efficiently compute gene count for each spot
+        gene_count = np.array(self.tissue_matrix.sum(axis=0)).flatten()
+        df = pd.DataFrame({
+            "barcode": self.barcode_list[0],
+            "x_mtx": self.tissue_position['x_mtx'],
+            "y_mtx": self.tissue_position['y_mtx'],
+            "gene_count": gene_count
+        })
         return df
 
-#############################
-
-    def get_neighbour_1(self, barcode):
-        # Note this function is a transformation of access_neighbour_1 function, however, we do not need gene input
-        # at here
-        """ Test partial independence of central spot to neighbours. 
-        Does s screeen off C from *
-                 *  *  *  
-               *  s1 s2  *
-              * s6  C  s3 *
-               *  s5 s4  *
-                 *  *  * 
-
-            Note: this function would also return the center point for convinence.
-        """
-        # firstly get the coor of barcode from self.dict_barcode_to_coor
-        center = self.dict_barcode_to_coor.get(barcode)
-        # secondly get the neighbour one by one
-            # check if in the coor_to_barcode dictionary, if not, enter None
-            # if yes, find the right column number and access 
-        s1 = [ center[0] - 1 , center[1] - 1]
-        s2 = [ center[0] + 1 , center[1] - 1]
-        s3 = [ center[0] + 2 , center[1]    ]
-        s4 = [ center[0] + 1 , center[1] + 1]
-        s5 = [ center[0] - 1 , center[1] + 1]
-        s6 = [ center[0] + 1 , center[1] - 1]
-        # then, change coor to barcode, then to column.
-        bar1 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s1) )
-        bar2 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s2) )
-        bar3 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s3) )
-        bar4 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s4) )
-        bar5 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s5) )
-        bar6 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s6) )
-        col1 = self.dict_barcode_to_column.get(bar1)
-        col2 = self.dict_barcode_to_column.get(bar2)
-        col3 = self.dict_barcode_to_column.get(bar3)
-        col4 = self.dict_barcode_to_column.get(bar4)
-        col5 = self.dict_barcode_to_column.get(bar5)
-        col6 = self.dict_barcode_to_column.get(bar6)
-
-        # finnally add everything to list
-        return [ col1,col2,col3,col4,col5,col6]
-    
-    def get_neighbour_1_bar(self, barcode):
-        # Note this function is a transformation of access_neighbour_1 function, however, we do not need gene input
-        # at here
-        """ Test partial independence of central spot to neighbours. 
-        Does s screeen off C from *
-                 *  *  *  
-               *  s1 s2  *
-              * s6  C  s3 *
-               *  s5 s4  *
-                 *  *  * 
-
-            Note: this function would also return the center point for convinence.
-        """
-        # firstly get the coor of barcode from self.dict_barcode_to_coor
-        center = self.dict_barcode_to_coor.get(barcode)
-        # secondly get the neighbour one by one
-            # check if in the coor_to_barcode dictionary, if not, enter None
-            # if yes, find the right column number and access 
-        s1 = [ center[0] - 1 , center[1] - 1]
-        s2 = [ center[0] + 1 , center[1] - 1]
-        s3 = [ center[0] + 2 , center[1]    ]
-        s4 = [ center[0] + 1 , center[1] + 1]
-        s5 = [ center[0] - 1 , center[1] + 1]
-        s6 = [ center[0] + 1 , center[1] - 1]
-        # then, change coor to barcode, then to column.
-        bar1 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s1) )
-        bar2 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s2) )
-        bar3 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s3) )
-        bar4 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s4) )
-        bar5 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s5) )
-        bar6 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s6) )
-
-
-        # finnally add everything to list
-        return [ bar1,bar2,bar3,bar4,bar5,bar6]
-
-    
-
-#----- Saving gene tables -------
-
-
-    def nh_variable(self, gene_sub_list):
-        df = pd.DataFrame(self.barcode_list)
-        for i in gene_sub_list:
-            df[i+'_nh'] = self.gen_table_by_gene(i)
+    def get_edge(self, radius_factor=1.35):
+        # Use spatial_utils KD-tree based edge detection
+        edge_mask = find_edge_spots(self.coords_xy, self.in_tissue, radius_factor=radius_factor)
+        edge_barcodes = self.tissue_position.loc[edge_mask, 'barcode'].values
+        edge_x = self.tissue_position.loc[edge_mask, 'x_mtx'].values
+        edge_y = self.tissue_position.loc[edge_mask, 'y_mtx'].values
+        gene_count = np.array(self.tissue_matrix.sum(axis=0)).flatten()[edge_mask]
+        df = pd.DataFrame({
+            "barcode": edge_barcodes,
+            "x_mtx": edge_x,
+            "y_mtx": edge_y,
+            "gene_count": gene_count
+        })
         return df
 
-    def fn_adjmatrix(self):
-        adjM = np.zeros((self.tissue_position.shape[0], self.tissue_position.shape[0]),dtype=int)
-
-        for index, row in self.barcode_list.iterrows():
-
-            temp1 = self.get_neighbour_1(row[0])
-            for i in temp1:
-                if i == None:
-                    continue
-                adjM[index, i] = 1
-
-        return adjM
-
-
-#----- Work on adjMatrix -------
-    def BFS(self, point, full_list):
-        #cluster_temp = []
-        adjmatrix = self.fn_adjmatrix()
-        visited = []
-        queue = [] 
-        visited.append(point)
-        queue.append(point)
-        while queue:          
-            m = queue.pop(0) 
-            print (m, end = " ") 
-            temp_ngh = np.where(adjmatrix[m,:] == 1)[0].tolist()
-            temp_sub_ngh = list( set(temp_ngh) & set(full_list) )
-            for neighbour in temp_sub_ngh:
-                if neighbour not in visited:
-                    visited.append(neighbour)
-                    queue.append(neighbour)
-
-        return visited
 
     def GET_cluster(self, barcode_list):
         # Note point_list is a list with position list
@@ -444,6 +288,11 @@ class Artifact_detect(Tissue_obj):
 #
 ########
 
+
+# Ensure Artifact_detect is defined before Artifact_remove
+
+# ...existing code for Artifact_detect...
+
 class Artifact_remove(Artifact_detect):
 
     def __init__(self, dir):
@@ -457,58 +306,64 @@ class Artifact_remove(Artifact_detect):
         self.remaining_depth = self.tissue_depth
         
 
-    def fn_spot_dis_to_edge(self):
-        #print(0)
+    def fn_spot_dis_to_edge(self, radius_factor=1.35):
+        """
+        Assigns each tissue spot a depth (layer) from the edge, using spatial neighbor search.
+        Returns a DataFrame with columns: barcode, in_tissue, spot_depth
+        """
+        import numpy as np
+        from scipy.spatial import cKDTree
+        import copy
+
         df = copy.deepcopy(self.tissue_position[["barcode", "in_tissue"]])
-        df['spot_depth'] = [0] * (df.shape[0])
-        # this function returns the maximum depth and a dataframe of spots & its depth level
-        #print("1")
+        df['spot_depth'] = 0
 
-        # 1. Firstly generate a set of spots which are "covered" "on edge" or "on border".
+        coords_xy = self.coords_xy
+        in_tissue = self.in_tissue
+        N = coords_xy.shape[0]
 
-        # Get edge spots
-        tissue_position = self.tissue_position
-        zero_idx = tissue_position[tissue_position.in_tissue == 0].index.to_list()
-        covered_idx = tissue_position[tissue_position.in_tissue == 1].index.to_list()
-        neighbors = set()
-        for i in range(len(zero_idx)):
-                barcode = self.tissue_position.at[zero_idx[i],'barcode']
-                neighbors.update(self.get_neighbour_1_bar(barcode))
-        covered_tissue = set(self.tissue_position.loc[covered_idx,'barcode'])
-        #print(len(neighbors))
-        # Get border spots
-        df_border_spot = self.get_border()
-        #print(len(df_border_spot.barcode))
-        neighbors.update(df_border_spot.barcode)
+        # Build KD-tree for all spots
+        tree = cKDTree(coords_xy)
+        d1 = tree.query(coords_xy, k=2)[0][:, 1]
+        r = radius_factor * np.median(d1)
 
-        neighbors.intersection_update(covered_tissue)
-        neighbors.discard(None)
-        for barcode in neighbors:
-            df.loc[df.barcode == barcode, "spot_depth"] = 1
-        remained = covered_tissue.difference(neighbors)
-        #print("2")
+        # Build adjacency list for all spots (tissue only)
+        pairs = list(tree.query_pairs(r=r))
+        adjacency = [[] for _ in range(N)]
+        for i, j in pairs:
+            adjacency[i].append(j)
+            adjacency[j].append(i)
 
+        # Only consider tissue spots
+        tissue_idx = np.where(in_tissue)[0]
+        unassigned = set(tissue_idx)
 
-        # 2. starting from spot with distance 1 to the "edge" or "border"
-        level = 2 
-        while len(remained) != 0:
-            #print(len(remained))
-            #print(len(neighbors))
-            ngh_iter = copy.deepcopy(neighbors)
-            for barcode in ngh_iter:
-                neighbors.update(self.get_neighbour_1_bar(barcode))
-                
-            neighbors.intersection_update(covered_tissue)
-            neighbors.discard(None)
-            added = neighbors.difference(ngh_iter)    
-            for barcode in added:
-                df.loc[df.barcode == barcode, "spot_depth"] = level
-            level = level + 1
-            remained = covered_tissue.difference(neighbors)
-        self.tissue_depth = level 
-        #print(3)
-        print(f"The depth of tissue is {level}")
+        # Find edge spots (layer 1)
+        edge_mask = find_edge_spots(coords_xy, in_tissue, radius_factor=radius_factor)
+        edge_idx = set(np.where(edge_mask)[0])
+        df.loc[edge_idx, 'spot_depth'] = 1
+        current_layer = edge_idx.copy()
+        assigned = edge_idx.copy()
+        unassigned -= assigned
+        depth = 1
 
+        # Iteratively find next layers
+        while unassigned:
+            depth += 1
+            next_layer = set()
+            for idx in current_layer:
+                for ngh in adjacency[idx]:
+                    if ngh in unassigned:
+                        next_layer.add(ngh)
+            if not next_layer:
+                break
+            df.loc[list(next_layer), 'spot_depth'] = depth
+            assigned |= next_layer
+            unassigned -= next_layer
+            current_layer = next_layer
+
+        self.tissue_depth = depth
+        print(f"The depth of tissue is {depth}")
         return df
 
     def fn_spot_inclusion_condition(self):
@@ -536,11 +391,11 @@ class Artifact_remove(Artifact_detect):
         return
 
     def remove_malfunction(self):
-        # Gel all malfunction points, add to remove_procedure list 
+        # Get all malfunction points, add to remove_procedure list
         self.remove_procedure.append("malfunction")
-        df_outlier_spot = Artifact_detect.outlier(self.get_sum())
+        df_outlier_spot = self.outlier(self.get_sum())
         for barcode in df_outlier_spot.barcode:
-            self.spot_inclusion_condition.loc[ self.spot_inclusion_condition.barcode == barcode, 'in_tissue'] = 0
+            self.spot_inclusion_condition.loc[self.spot_inclusion_condition.barcode == barcode, 'in_tissue'] = 0
         n_outlier = len(df_outlier_spot.barcode)
         print(f"We removed {n_outlier} outlier spots")
         return
