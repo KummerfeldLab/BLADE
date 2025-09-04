@@ -97,21 +97,24 @@ class Tissue_obj:
 
 
 
-class Artifact_detect(Tissue_obj):
-    def __init__(self, dir):
-        super().__init__(dir)
+class Artifact_detect:
+    def __init__(self, param):
+#       super().__init__(dir)
+        if type(param) is str:
+            self.Tissue = Tissue_obj(param)
+        elif type(param) is Tissue_obj:
+            self.Tissue = param
+        else:
+            ValueError('Either a directory or an instantiated Tissue_obj must be provided')
 
 
-
-    
-#############################
     def get_sum(self): 
         # we now change border test to level 2
         gene_count = []
         x_mtx =[]
         y_mtx = []
         barcode =[]
-        for index, row in self.tissue_position.iterrows():
+        for index, row in self.Tissue.tissue_position.iterrows():
  
             bar = self.dict_coor_to_barcode.get(str(row.iloc[2]) + ' ' + str(row.iloc[3]) + ' ')
             i = self.dict_barcode_to_column.get(bar)
@@ -220,7 +223,7 @@ class Artifact_detect(Tissue_obj):
         return df
 
     def fn_adjmatrix(self):
-        adjM = np.zeros((self.tissue_position.shape[0], self.tissue_position.shape[0]),dtype=int)
+        adjM = np.zeros((self.Tissue.tissue_position.shape[0], self.Tissue.tissue_position.shape[0]),dtype=int)
 
         for index, row in self.barcode_list.iterrows():
 
@@ -338,7 +341,7 @@ class Artifact_detect(Tissue_obj):
         x_mtx =[]
         y_mtx = []
         barcode =[]
-        for index, row in self.tissue_position.iterrows():
+        for index, row in self.Tissue.tissue_position.iterrows():
             if row.iloc[1] == 0:
                 continue
             # the following conditioning controls the deepth of testing
@@ -362,16 +365,16 @@ class Artifact_detect(Tissue_obj):
 
     def get_edge(self): 
         # change edge test to level 2
-        tissue_position = self.tissue_position
+        tissue_position = self.Tissue.tissue_position
         zero_idx = tissue_position[tissue_position.in_tissue == 0].index.to_list()
         covered_idx = tissue_position[tissue_position.in_tissue == 1].index.to_list()
 
         neighbors = set()
         
         for index in zero_idx:
-                barcode = self.tissue_position.at[index,'barcode']
+                barcode = self.Tissue.tissue_position.at[index,'barcode']
                 neighbors.update(self.get_neighbour_1_bar(barcode))
-        covered_tissue = set(self.tissue_position.loc[covered_idx,'barcode'])
+        covered_tissue = set(self.Tissue.tissue_position.loc[covered_idx,'barcode'])
 
         neighbors.intersection_update(covered_tissue)
         
@@ -409,9 +412,10 @@ class Artifact_detect(Tissue_obj):
         return df
       
     
+    """
     def get_inner(self, exclude_df):
         # this is just temporary, better to use to edge distance for further analysis
-        tissue_position = self.tissue_position.loc[self.tissue_position['in_tissue'] == 1]
+        tissue_position = self.Tissue.tissue_position.loc[self.Tissue.tissue_position['in_tissue'] == 1]
         gene_count = []
         x_mtx =[]
         y_mtx = []
@@ -435,6 +439,7 @@ class Artifact_detect(Tissue_obj):
         
         df_return = df[~df.barcode.isin(exclude_df.barcode)]
         return df_return
+        """
     
 
 ########
@@ -459,7 +464,7 @@ class Artifact_remove(Artifact_detect):
 
     def fn_spot_dis_to_edge(self):
         #print(0)
-        df = copy.deepcopy(self.tissue_position[["barcode", "in_tissue"]])
+        df = copy.deepcopy(self.Tissue.tissue_position[["barcode", "in_tissue"]])
         df['spot_depth'] = [0] * (df.shape[0])
         # this function returns the maximum depth and a dataframe of spots & its depth level
         #print("1")
@@ -467,14 +472,14 @@ class Artifact_remove(Artifact_detect):
         # 1. Firstly generate a set of spots which are "covered" "on edge" or "on border".
 
         # Get edge spots
-        tissue_position = self.tissue_position
+        tissue_position = self.Tissue.tissue_position
         zero_idx = tissue_position[tissue_position.in_tissue == 0].index.to_list()
         covered_idx = tissue_position[tissue_position.in_tissue == 1].index.to_list()
         neighbors = set()
         for i in range(len(zero_idx)):
-                barcode = self.tissue_position.at[zero_idx[i],'barcode']
+                barcode = self.Tissue.tissue_position.at[zero_idx[i],'barcode']
                 neighbors.update(self.get_neighbour_1_bar(barcode))
-        covered_tissue = set(self.tissue_position.loc[covered_idx,'barcode'])
+        covered_tissue = set(self.Tissue.tissue_position.loc[covered_idx,'barcode'])
         #print(len(neighbors))
         # Get border spots
         df_border_spot = self.get_border()
@@ -512,7 +517,7 @@ class Artifact_remove(Artifact_detect):
         return df
 
     def fn_spot_inclusion_condition(self):
-        df = copy.deepcopy(self.tissue_position[["barcode", "in_tissue"]])
+        df = copy.deepcopy(self.Tissue.tissue_position[["barcode", "in_tissue"]])
 
         return df
 
@@ -565,7 +570,7 @@ class Artifact_remove(Artifact_detect):
     
     def save(self, dir):
         # Save the position list dataframe 
-        df = copy.deepcopy(self.tissue_position)
+        df = copy.deepcopy(self.Tissue.tissue_position)
 
         df.in_tissue = self.spot_inclusion_condition.in_tissue
         df.to_csv(dir + '/tissue_positions.csv', index = False)
