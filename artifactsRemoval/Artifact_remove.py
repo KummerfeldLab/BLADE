@@ -116,19 +116,20 @@ class Artifact_detect:
         barcode =[]
         for index, row in self.Tissue.tissue_position.iterrows():
  
-            bar = self.dict_coor_to_barcode.get(str(row.iloc[2]) + ' ' + str(row.iloc[3]) + ' ')
-            i = self.dict_barcode_to_column.get(bar)
+            bar = self.Tissue.dict_coor_to_barcode.get(str(row.iloc[2]) + ' ' + str(row.iloc[3]) + ' ')
+            i = self.Tissue.dict_barcode_to_column.get(bar)
             if i == None:
                 continue
             x_mtx.append(row.iloc[2])
             y_mtx.append(row.iloc[3])
             barcode.append(bar)
-            gene_count.append(self.tissue_matrix[:,i].sum())
+            gene_count.append(self.Tissue.tissue_matrix[:,i].sum())
+
         d = {"barcode":barcode,
-            "x_mtx":x_mtx,
-                          "y_mtx": y_mtx,
-                          "gene_count": gene_count
-        }
+             "x_mtx":x_mtx,
+             "y_mtx": y_mtx,
+             "gene_count": gene_count
+             }
         df = pd.DataFrame(d)
         return df
 
@@ -189,7 +190,7 @@ class Artifact_detect:
             Note: this function would also return the center point for convinence.
         """
         # firstly get the coor of barcode from self.dict_barcode_to_coor
-        center = self.dict_barcode_to_coor.get(barcode)
+        center = self.Tissue.dict_barcode_to_coor.get(barcode)
         # secondly get the neighbour one by one
             # check if in the coor_to_barcode dictionary, if not, enter None
             # if yes, find the right column number and access 
@@ -200,12 +201,12 @@ class Artifact_detect:
         s5 = [ center[0] - 1 , center[1] + 1]
         s6 = [ center[0] + 1 , center[1] - 1]
         # then, change coor to barcode, then to column.
-        bar1 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s1) )
-        bar2 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s2) )
-        bar3 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s3) )
-        bar4 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s4) )
-        bar5 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s5) )
-        bar6 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s6) )
+        bar1 = self.Tissue.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s1) )
+        bar2 = self.Tissue.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s2) )
+        bar3 = self.Tissue.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s3) )
+        bar4 = self.Tissue.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s4) )
+        bar5 = self.Tissue.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s5) )
+        bar6 = self.Tissue.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s6) )
 
 
         # finnally add everything to list
@@ -394,14 +395,14 @@ class Artifact_detect:
         y_mtx = []
         bar=[]
         for barcode in neighbors:
-            coor = self.dict_barcode_to_coor.get(barcode)
-            i = self.dict_barcode_to_column.get(barcode)
+            coor = self.Tissue.dict_barcode_to_coor.get(barcode)
+            i = self.Tissue.dict_barcode_to_column.get(barcode)
             if i == None:
                 continue
             x_mtx.append(coor[0])
             y_mtx.append(coor[1])
             bar.append(barcode)
-            gene_count.append(self.tissue_matrix[:,i].sum())
+            gene_count.append(self.Tissue.tissue_matrix[:,i].sum())
 
         d = {"barcode":bar,
             "x_mtx":x_mtx,
