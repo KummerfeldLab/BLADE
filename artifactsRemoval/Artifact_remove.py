@@ -128,6 +128,13 @@ class Artifact_detect(Tissue_obj):
         }
         df = pd.DataFrame(d)
         return df
+    
+    def seqdepth(tissue_ob):
+        df = pd.DataFrame(tissue_ob.tissue_matrix.toarray().transpose(),
+                          index=tissue_ob.barcode_list[0].values,
+                          columns=tissue_ob.feature_list[1].values)
+        return df.sum(axis=1)
+
 
 #############################
 
@@ -154,7 +161,7 @@ class Artifact_detect(Tissue_obj):
         s3 = [ center[0] + 2 , center[1]    ]
         s4 = [ center[0] + 1 , center[1] + 1]
         s5 = [ center[0] - 1 , center[1] + 1]
-        s6 = [ center[0] + 1 , center[1] - 1]
+        s6 = [ center[0] + 1 , center[1] - 2]
         # then, change coor to barcode, then to column.
         bar1 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s1) )
         bar2 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s2) )
@@ -195,7 +202,7 @@ class Artifact_detect(Tissue_obj):
         s3 = [ center[0] + 2 , center[1]    ]
         s4 = [ center[0] + 1 , center[1] + 1]
         s5 = [ center[0] - 1 , center[1] + 1]
-        s6 = [ center[0] + 1 , center[1] - 1]
+        s6 = [ center[0] + 1 , center[1] - 2]
         # then, change coor to barcode, then to column.
         bar1 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s1) )
         bar2 = self.dict_coor_to_barcode.get( ''.join(str(x) + ' ' for x in s2) )
