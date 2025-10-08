@@ -32,8 +32,8 @@ It has both Python and R implementations. For detailed usage tutorial refer to u
 
 - BLADE should be used on Visium and other spatial transcriptomics data prior to other forms of analysis, to prevent bias
 ----------------------
+A lightweight toolkit for detecting and removing tissue artifacts in spatial transcriptomics data.
 
-## Intro
 This repository provides two Python workflows:
 
 - `Artifact_remove` – optimized for standard Visium data (matrix/tsv inputs).
@@ -43,7 +43,13 @@ Both workflows share a similar API: border removal, edge removal, malfunction de
 
 ## Installation
 
-Clone the repository and install it locally (editable mode recommended during development):
+Install directly from GitHub:
+
+```
+pip install git+https://github.com/KummerfeldLab/BLADE.git
+```
+
+For editable installs (development):
 
 ```
 git clone https://github.com/KummerfeldLab/BLADE.git
@@ -51,58 +57,54 @@ cd BLADE
 pip install -e .
 ```
 
-Dependencies are listed in `setup.py` (NumPy, pandas, SciPy, matplotlib, h5py, pyarrow for HD Parquet support).
+Dependencies include NumPy, pandas, SciPy, matplotlib, h5py, and pyarrow (for Parquet support in HD workflows).
 
-## Quick start
+## Usage examples
+
+### Standard Visium (matrix/tsv inputs)
 
 ```python
-from artifactsRemoval import Artifact_remove, Artifact_remove_HD
+from artifactsRemoval import Artifact_remove
 
-# Standard Visium data
-visium = Artifact_remove(dir="/path/to/visium/sample")
+dir_path = "/path/to/visium/sample"
+visium = Artifact_remove(dir=dir_path)
+
 visium.remove_border()
 visium.remove_edge(distance=2)
 visium.remove_malfunction(use_clusters=False)
-visium.save("/path/to/output")
 
-# Visium HD data
+visium.review_removing()
+visium.save("/path/to/output")
+```
+
+### Visium HD (HDF5 + Parquet/CSV)
+
+```python
+from artifactsRemoval import Artifact_remove_HD
+
 hd = Artifact_remove_HD(
     data_dir="/path/to/Visium_HD/sample",
+    positions_path="/path/to/Visium_HD/sample/spatial/tissue_positions.parquet",
+    h5_path="/path/to/Visium_HD/sample/filtered_feature_cell_matrix.h5",
     neighbor_mode="k",
     k_neighbors=8,
 )
-hd.remove_border(distance=float(hd._grid_radius) if hd._grid_radius else 0.0)
+
+border_width = float(hd._grid_radius) if hd._grid_radius else 0.0
+hd.remove_border(distance=border_width)
 hd.remove_edge(distance=2)
-hd.remove_malfunction()  # clustered removal by default
+hd.remove_malfunction()  # cluster-aware by default (min cluster size 15)
+
 hd.save("/path/to/output")
+hd.save_hdf5("/path/to/output/filtered_feature_cell_matrix.filtered.h5")
 ```
-
-### Choosing the right class
-
-| Data type | Class to use | Notes |
-| --- | --- | --- |
-| Visium (matrix/tsv) | `Artifact_remove` | Uses lattice-based neighbor lookups. |
-| Visium HD (HDF5) | `Artifact_remove_HD` | Uses KD-tree spatial neighbors and supports Parquet/CSV positions. Requires `pyarrow` for Parquet. |
 
 ## Tutorials
 
-- **HD workflow notebook** – `notebooks/Visium_HD_Artifact_Cleanup.ipynb` demonstrates the HD pipeline end-to-end.
-- Legacy tutorials for standard Visium remain under `artifactsRemoval/tutorial_package.py` and the `old_ver/` directory.
+- `notebooks/Visium_HD_Artifact_Cleanup.ipynb` – interactive walkthrough for the Visium HD workflow.
+- `artifactsRemoval/tutorial_package.py` – script illustrating standard Visium usage with `Artifact_remove`.
 
 ## Packaging notes
 
-- `setup.py` exposes the package as `artifactsRemoval`. Install with `pip install -e .` during development or `pip install git+https://github.com/KummerfeldLab/BLADE.git` for users.
-- `artifactsRemoval/__init__.py` exports both `Artifact_remove` and `Artifact_remove_HD`.
-
-## Development workflow
-
-1. Create a feature branch from `lw_tissue_composition` (as done for this integration).
-2. Implement changes (e.g., new HD functionality).
-3. Run the notebooks/tests in `notebooks/` or `artifactsRemoval/test_*` to verify behavior.
-4. Commit and push your branch, then open a pull request.
-
-## Support and limitations
-
-- Artifact definitions assume Visium-style grids; adjust neighbor radius and cluster thresholds as needed for other technologies.
-- Cluster-aware malfunction removal (`remove_malfunction`) removes only contiguous outlier patches with size ≥ 15 by default; set `use_clusters=False` to revert to the original per-spot removal.
-- Ensure `pyarrow` is installed when working with Parquet position files for Visium HD.
+- The package installs as `artifactsRemoval` and exports both `Artifact_remove` and `Artifact_remove_HD`.
+- Ensure `pyarrow` is installed when working with Parquet position files in Visium HD data.

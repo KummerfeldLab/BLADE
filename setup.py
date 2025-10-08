@@ -1,20 +1,29 @@
+from pathlib import Path
 from setuptools import setup, find_packages
 
+ROOT = Path(__file__).resolve().parent
+README_PATH = ROOT / "README.md"
+LONG_DESCRIPTION = README_PATH.read_text(encoding="utf-8") if README_PATH.exists() else ""
+
 setup(
-    name='artifactsRemoval',  # Replace 'mypackage' with the name of your package
-    version='0.1',  # Replace '0.1.0' with the current version of your package
-    author='Yinzhao Wang',  # Replace 'Your Name' with your name
-    author_email='wyz2016828@example.com',  # Replace with your email
-    description='A package for detect and removal of artifacts in Spatial Transcriptomics Tissue samples',  # A short description
-    long_description=open('README.md').read(),  # Long description read from the README.md
-    long_description_content_type='text/markdown',  # This is important for formatting the long description
-    url='https://github.com/KummerfeldLab/artifactDetection',  # Link to your package's GitHub repo
-    packages=find_packages(),  # Finds all python modules in the directory automatically
-    install_requires=['numpy', 
-                      'pandas',
-                      'scipy',
-                      'matplotlib',
-                      ],
-    keywords='artifacts removal',  # Keywords for your project
-    python_requires='>=3.6'  # Minimum version requirement of the Python runtime
+    name="artifactsRemoval",
+    version="0.2.0",
+    description="Artifact removal workflows for Visium and Visium HD spatial transcriptomics data",
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type="text/markdown",
+    author="Kummerfeld Lab",
+    author_email="kummerfeldlab@umich.edu",
+    url="https://github.com/KummerfeldLab/BLADE",
+    packages=find_packages(exclude=("old_ver", "tests", "tests.*")),
+    python_requires=">=3.8",
+    install_requires=[
+        "numpy",
+        "pandas",
+        "scipy",
+        "matplotlib",
+        "h5py",
+        "pyarrow",
+    ],
+    keywords=["spatial transcriptomics", "artifact removal", "Visium"],
+    include_package_data=True,
 )
