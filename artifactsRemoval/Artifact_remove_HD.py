@@ -1,5 +1,6 @@
 import os
 import copy
+import warnings
 import numpy as np
 import pandas as pd
 import h5py
@@ -600,32 +601,136 @@ class Artifact_remove_HD(ArtifactDetectHD):
         print(f"Saved the tissue position file to {out_path}")
         return df
 
+    def save_hdf5(self, out_path, filter_in_tissue=True):
+        """Save the HD matrix in 10x-style HDF5 format, optionally filtering to in-tissue spots.
+
+        Parameters
+        ----------
+        out_path : str
+            Destination path for the output .h5 file.
+        filter_in_tissue : bool, optional
+            If True (default), keep only spots currently marked as in-tissue.
+        """
+        if not out_path:
+            raise ValueError("out_path must be provided")
+
+        out_dir = os.path.dirname(out_path)
+        if out_dir:
+            os.makedirs(out_dir, exist_ok=True)
+
+        matrix = self.tissue_matrix
+        if not hasattr(matrix, "tocsc"):
+            raise ValueError("tissue_matrix must be a scipy sparse matrix")
+        matrix = matrix.tocsc()
+        total_spots = matrix.shape[1]
+
+        barcodes_series = self.barcode_list.iloc[:, 0].astype(str).reset_index(drop=True)
+        if filter_in_tissue and hasattr(self, "spot_inclusion_condition"):
+            inclusion = (
+                self.spot_inclusion_condition.set_index("barcode")["in_tissue"]
+                .reindex(barcodes_series)
+                .fillna(0)
+                .astype(bool)
+            )
+            keep_mask = inclusion.to_numpy(dtype=bool)
+            matrix = matrix[:, keep_mask]
+            matrix = matrix.tocsc()
+            barcodes_series = barcodes_series[keep_mask]
+        retained_spots = matrix.shape[1]
+        barcodes = barcodes_series.to_numpy(dtype="S")
+
+        features = self.feature_list
+        feature_id = features.iloc[:, 0].astype(str).to_numpy(dtype="S")
+        feature_name = features.iloc[:, 1].astype(str).to_numpy(dtype="S")
+        if features.shape[1] > 2:
+            feature_type = features.iloc[:, 2].astype(str).to_numpy(dtype="S")
+        else:
+            feature_type = np.array([b"Gene Expression"] * len(features), dtype="S")
+        genome = np.array([b"unknown"] * len(features), dtype="S")
+        all_tag_keys = np.array([b"feature_type"], dtype="S")
+
+        with h5py.File(out_path, "w") as f:
+            grp = f.create_group("matrix")
+            grp.create_dataset("barcodes", data=barcodes)
+            grp.create_dataset("data", data=matrix.data)
+            grp.create_dataset("indices", data=matrix.indices)
+            grp.create_dataset("indptr", data=matrix.indptr)
+            grp.create_dataset("shape", data=np.array(matrix.shape, dtype=np.int32))
+
+            feat_grp = grp.create_group("features")
+            feat_grp.create_dataset("id", data=feature_id)
+            feat_grp.create_dataset("name", data=feature_name)
+            feat_grp.create_dataset("feature_type", data=feature_type)
+            feat_grp.create_dataset("genome", data=genome)
+            feat_grp.create_dataset("_all_tag_keys", data=all_tag_keys)
+
+        print(
+            f"Saved Visium HD HDF5 to {out_path} (retained {retained_spots} of {total_spots} spots)."
+        )
+
     @staticmethod
     def outlier(df, out_rate=0.05):
-        out_rate_epr = 0
+        tol = 0.01
+        max_iter = 200
+        step_scale = 0.25
+        min_step = 0.001
+        max_step = 0.05
+        min_prob = 1e-4
+        center_gap = 0.005
+
+        counts = df["gene_count"].to_numpy()
+        total = len(counts)
+        if total == 0:
+            return df.iloc[0:0]
+
         probs = [0.02, 0.98]
         data_outlier = df
-        while abs(out_rate_epr - out_rate) > 0.01:
-            if out_rate_epr - out_rate > 0:
-                probs = [probs[0] - 0.0005, probs[1] + 0.0005]
-            else:
-                probs = [probs[0] + 0.0005, probs[1] - 0.0005]
+        out_rate_epr = 0.0
 
-            quart_1 = np.quantile(df.gene_count, probs[0])
-            quart_2 = np.quantile(df.gene_count, probs[1])
-            iqr = np.quantile(df.gene_count, 0.75) - np.quantile(df.gene_count, 0.25)
+        for iteration in range(max_iter):
+            quart_1 = np.quantile(counts, probs[0])
+            quart_2 = np.quantile(counts, probs[1])
+            iqr = np.quantile(counts, 0.75) - np.quantile(counts, 0.25)
             try:
                 import scipy.stats as st
 
-                skew = st.skew(df.gene_count)
+                skew = st.skew(counts)
             except Exception:
                 skew = 0.0
 
             lower = quart_1 - 1.5 * np.exp(-4 * skew) * iqr
             upper = quart_2 + 1.5 * np.exp(3 * skew) * iqr
-            mask = ~((df.gene_count > lower) & (df.gene_count < upper))
+            mask = ~((counts > lower) & (counts < upper))
             data_outlier = df[mask]
-            out_rate_epr = len(data_outlier) / len(df.gene_count)
+            out_rate_epr = len(data_outlier) / total
+
+            if abs(out_rate_epr - out_rate) <= tol:
+                break
+
+            delta = float(np.clip((out_rate_epr - out_rate) * step_scale, -max_step, max_step))
+            step = max(abs(delta), min_step)
+
+            if delta >= 0:
+                new_lower = max(probs[0] - step, min_prob)
+                new_upper = min(probs[1] + step, 1.0 - min_prob)
+            else:
+                new_lower = min(probs[0] + step, 0.5 - center_gap)
+                new_upper = max(probs[1] - step, 0.5 + center_gap)
+
+            if new_lower >= new_upper - min_prob:
+                break
+
+            if new_lower == probs[0] and new_upper == probs[1]:
+                break
+
+            probs = [new_lower, new_upper]
+        else:
+            warnings.warn(
+                f"Outlier detection stopped after {max_iter} iterations (target rate={out_rate:.3f}, "
+                f"observed={out_rate_epr:.3f}). Results may deviate from the target rate.",
+                RuntimeWarning,
+            )
+
         return data_outlier
 
 
