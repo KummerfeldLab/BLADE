@@ -99,6 +99,47 @@ hd.save("/path/to/output")
 hd.save_hdf5("/path/to/output/filtered_feature_cell_matrix.filtered.h5")
 ```
 
+
+
+## One-button edge cleanup
+
+To automatically iterate border/edge removal until edge quality matches the interior, call `run_iterative_edge_cleanup`. The helper loads the sample, optionally removes the border, runs two-sided t-tests comparing the current edge to interior counts, removes one edge layer when `p < threshold`, and saves an HDF5 snapshot after each removal.
+
+```python
+from artifactsRemoval import run_iterative_edge_cleanup
+
+history = run_iterative_edge_cleanup(
+    data_dir="/path/to/visium/sample",
+    output_dir="/tmp/edge_runs",
+    p_threshold=0.05,
+    initial_edge_distance=1,
+    max_iterations=5,
+    remove_border_first=True,
+)
+print(history)
+# Saves files: filtered_feature_bc_matrix.border_removed.h5, filtered_feature_bc_matrix.iter1.h5, ...
+```
+
+### Usage example (iterative deletion loop)
+
+```
+from artifactsRemoval import run_iterative_edge_cleanup
+
+# Automatically peel edge layers until the edge no longer differs from the interior
+history = run_iterative_edge_cleanup(
+    data_dir="/data/spaceranger/sample1",
+    output_dir="/data/results/sample1_cleanup",
+    p_threshold=0.05,          # stop when edge vs interior p-value is >= 0.05
+    initial_edge_distance=1,   # start with distance-1 edge layer
+    max_iterations=None,       # remove until convergence or tissue is exhausted
+    remove_border_first=True,  # drop annotated border before testing edges
+)
+
+for step in history:
+    print(f"Edge distance {step['edge_distance']} p={step['p_value']:.3g}")
+# HDF5 snapshots land in output_dir after each removal (iterN.h5) plus the optional border_removed.h5
+```
+
 ## Tutorials
 
 - `notebooks/Visium_HD_Artifact_Cleanup.ipynb` – interactive walkthrough for the Visium HD workflow.
