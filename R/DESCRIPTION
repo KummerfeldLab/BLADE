@@ -1,0 +1,21 @@
+Package: BLADE
+Title: Detect and Remove Spatial Tissue Artifacts
+Version: 0.1.0
+Authors@R: c(
+    person("Kummerfeld", "Lab", email = "kummerfeldlab@umich.edu", role = c("aut", "cre"))
+)
+Description: Polars-backed workflows for detecting edge, border, and malfunction
+    artifacts in spatial transcriptomics data, including Visium and Visium HD
+    layouts.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+Imports:
+    polars,
+    Matrix,
+    hdf5r,
+    stats,
+    utils
+Suggests:
+    methods
