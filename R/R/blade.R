@@ -1,22 +1,31 @@
 #' Read standard Visium inputs
 #'
 #' @param dir Path to a Spaceranger output folder containing filtered_feature_bc_matrix/ and spatial/.
+#' @param h5_path Optional path to filtered_feature_bc_matrix.h5.
 #' @param neighbor_mode "radius" or "k" for neighbor selection.
 #' @param k_neighbors Number of neighbors for k mode.
 #' @param neighbor_radius Optional radius for neighbor search.
 #' @return A list with matrix, positions, inclusion mask, and neighbor index.
 #' @export
-blade_read_visium <- function(dir, neighbor_mode = "radius", k_neighbors = 6, neighbor_radius = NULL) {
+blade_read_visium <- function(dir, h5_path = NULL, neighbor_mode = "radius", k_neighbors = 6, neighbor_radius = NULL) {
   matrix_path <- file.path(dir, "filtered_feature_bc_matrix", "matrix.mtx.gz")
   barcodes_path <- file.path(dir, "filtered_feature_bc_matrix", "barcodes.tsv.gz")
   features_path <- file.path(dir, "filtered_feature_bc_matrix", "features.tsv.gz")
+  h5_path <- h5_path %||% file.path(dir, "filtered_feature_bc_matrix", "filtered_feature_bc_matrix.h5")
   positions_path <- file.path(dir, "spatial", "tissue_positions.csv")
 
-  matrix <- Matrix::readMM(gzfile(matrix_path))
-  matrix <- Matrix::as(matrix, "dgCMatrix")
+  if (!is.null(h5_path) && file.exists(h5_path)) {
+    h5_data <- .blade_read_h5_matrix(h5_path)
+    matrix <- h5_data$matrix
+    barcodes_df <- h5_data$barcodes
+    features_df <- h5_data$features
+  } else {
+    matrix <- Matrix::readMM(gzfile(matrix_path))
+    matrix <- Matrix::as(matrix, "dgCMatrix")
 
-  barcodes_df <- polars::read_csv(barcodes_path, separator = "\t", has_header = FALSE)
-  features_df <- polars::read_csv(features_path, separator = "\t", has_header = FALSE)
+    barcodes_df <- polars::read_csv(barcodes_path, separator = "\t", has_header = FALSE)
+    features_df <- polars::read_csv(features_path, separator = "\t", has_header = FALSE)
+  }
   positions_df <- polars::read_csv(positions_path)
 
   positions_df <- .blade_standardize_positions(positions_df)
@@ -62,34 +71,10 @@ blade_read_visium_hd <- function(
     stop("Positions path not provided and auto-discovery failed.")
   }
 
-  h5 <- hdf5r::H5File$new(h5_path, mode = "r")
-  on.exit(h5$close_all())
-  grp <- h5[["matrix"]]
-  data <- grp[["data"]][]
-  indices <- grp[["indices"]][]
-  indptr <- grp[["indptr"]][]
-  shape <- as.integer(grp[["shape"]][])
-  barcodes <- grp[["barcodes"]][]
-
-  feat_grp <- grp[["features"]]
-  feature_id <- feat_grp[["id"]][]
-  feature_name <- feat_grp[["name"]][]
-  feature_type <- if ("feature_type" %in% names(feat_grp)) feat_grp[["feature_type"]][] else NULL
-
-  matrix <- Matrix::sparseMatrix(
-    i = indices + 1L,
-    p = indptr,
-    x = data,
-    dims = shape,
-    repr = "C"
-  )
-
-  barcodes_df <- polars::pl$DataFrame(list(barcode = as.character(barcodes)))
-  features_list <- list(feature_id = as.character(feature_id), feature_name = as.character(feature_name))
-  if (!is.null(feature_type)) {
-    features_list$feature_type <- as.character(feature_type)
-  }
-  features_df <- polars::pl$DataFrame(features_list)
+  h5_data <- .blade_read_h5_matrix(h5_path)
+  matrix <- h5_data$matrix
+  barcodes_df <- h5_data$barcodes
+  features_df <- h5_data$features
 
   if (grepl("\\.parquet$", positions_path, ignore.case = TRUE)) {
     positions_df <- polars::read_parquet(positions_path)
@@ -388,6 +373,38 @@ blade_save_positions <- function(tissue, out_path) {
     if (file.exists(cand)) return(cand)
   }
   NULL
+}
+
+.blade_read_h5_matrix <- function(h5_path) {
+  h5 <- hdf5r::H5File$new(h5_path, mode = "r")
+  on.exit(h5$close_all())
+  grp <- h5[["matrix"]]
+  data <- grp[["data"]][]
+  indices <- grp[["indices"]][]
+  indptr <- grp[["indptr"]][]
+  shape <- as.integer(grp[["shape"]][])
+  barcodes <- grp[["barcodes"]][]
+
+  feat_grp <- grp[["features"]]
+  feature_id <- feat_grp[["id"]][]
+  feature_name <- feat_grp[["name"]][]
+  feature_type <- if ("feature_type" %in% names(feat_grp)) feat_grp[["feature_type"]][] else NULL
+
+  matrix <- Matrix::sparseMatrix(
+    i = indices + 1L,
+    p = indptr,
+    x = data,
+    dims = shape,
+    repr = "C"
+  )
+
+  barcodes_df <- polars::pl$DataFrame(list(barcode = as.character(barcodes)))
+  features_list <- list(feature_id = as.character(feature_id), feature_name = as.character(feature_name))
+  if (!is.null(feature_type)) {
+    features_list$feature_type <- as.character(feature_type)
+  }
+  features_df <- polars::pl$DataFrame(features_list)
+  list(matrix = matrix, barcodes = barcodes_df, features = features_df)
 }
 
 .blade_neighbor_index <- function(positions_df, mode, radius, k) {

@@ -14,7 +14,10 @@ remove artifacts, and iterate edge cleanup until edge quality matches the interi
 ```r
 library(BLADE)
 
-tissue <- blade_read_visium("/path/to/visium/sample")
+tissue <- blade_read_visium(
+  "/path/to/visium/sample",
+  h5_path = "/path/to/visium/sample/filtered_feature_bc_matrix/filtered_feature_bc_matrix.h5"
+)
 
 tissue <- blade_remove_border(tissue)
 
@@ -38,6 +41,11 @@ history <- blade_run_iterative_edge_cleanup_hd(
 )
 print(history)
 ```
+
+## HDF5 input notes
+
+- `blade_read_visium()` prefers `filtered_feature_bc_matrix.h5` when available.
+- If the HDF5 file is missing, it falls back to the MTX/TSV inputs.
 
 ## Performance notes (runtime estimates)
 
