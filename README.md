@@ -1,5 +1,5 @@
 ## **BLADE**: a package for the purpose of tissue artifacts detection (Edge, Border, abnormal spots). 
-It has both Python and R implementations. For detailed usage tutorial refer to usage tutorial section. 
+It has both Python and R implementations. For detailed usage tutorial refer to usage tutorial section.
 
 ### Main use:  Detecting edge artifacts, border artifacts, and location malfunction artifacts
 
@@ -34,19 +34,24 @@ It has both Python and R implementations. For detailed usage tutorial refer to u
 ----------------------
 A lightweight toolkit for detecting and removing tissue artifacts in spatial transcriptomics data.
 
-This repository provides two Python workflows:
+This repository provides two Python workflows (polars-based):
 
 - `Artifact_remove` – optimized for standard Visium data (matrix/tsv inputs).
 - `Artifact_remove_HD` – optimized for Visium HD data (HDF5 + Parquet/CSV inputs).
 
 Both workflows share a similar API: border removal, edge removal, malfunction detection, and utilities for reviewing or saving masks.
 
+## Repository layout
+
+- `python/` – Python implementation (package, utilities, notebooks).
+- `R/` – reserved for the forthcoming R + polars implementation.
+
 ## Installation
 
 Install directly from GitHub:
 
 ```
-pip install git+https://github.com/KummerfeldLab/BLADE.git
+pip install git+https://github.com/KummerfeldLab/BLADE.git#subdirectory=python
 ```
 
 For editable installs (development):
@@ -54,10 +59,10 @@ For editable installs (development):
 ```
 git clone https://github.com/KummerfeldLab/BLADE.git
 cd BLADE
-pip install -e .
+pip install -e python
 ```
 
-Dependencies include NumPy, pandas, SciPy, matplotlib, h5py, and pyarrow (for Parquet support in HD workflows).
+Dependencies include NumPy, polars, SciPy, matplotlib, h5py, and pyarrow (for Parquet support in HD workflows).
 
 ## Usage examples
 
@@ -90,8 +95,7 @@ hd = Artifact_remove_HD(
     k_neighbors=8,
 )
 
-border_width = float(hd._grid_radius) if hd._grid_radius else 0.0
-hd.remove_border(distance=border_width)
+hd.remove_border(distance=0.0)
 hd.remove_edge(distance=2)
 hd.remove_malfunction()  # cluster-aware by default (min cluster size 15)
 
@@ -142,8 +146,8 @@ for step in history:
 
 ## Tutorials
 
-- `notebooks/Visium_HD_Artifact_Cleanup.ipynb` – interactive walkthrough for the Visium HD workflow.
-- `artifactsRemoval/tutorial_package.py` – script illustrating standard Visium usage with `Artifact_remove`.
+- `python/notebooks/Visium_HD_Artifact_Cleanup.ipynb` – interactive walkthrough for the Visium HD workflow.
+- `python/artifactsRemoval/tutorial_package.py` – script illustrating standard Visium usage with `Artifact_remove`.
 
 ## Packaging notes
 

@@ -2,7 +2,7 @@ from pathlib import Path
 from setuptools import setup, find_packages
 
 ROOT = Path(__file__).resolve().parent
-README_PATH = ROOT / "README.md"
+README_PATH = ROOT.parent / "README.md"
 LONG_DESCRIPTION = README_PATH.read_text(encoding="utf-8") if README_PATH.exists() else ""
 
 setup(
@@ -18,7 +18,7 @@ setup(
     python_requires=">=3.8",
     install_requires=[
         "numpy",
-        "pandas",
+        "polars",
         "scipy",
         "matplotlib",
         "h5py",
